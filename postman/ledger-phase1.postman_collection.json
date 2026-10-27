@@ -1,0 +1,528 @@
+{
+  "info": {
+    "name": "Ledger Service - Phase 1",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Create SYSTEM account (can go negative)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/accounts",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "accounts"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Bank Reserve\",\n  \"type\": \"SYSTEM\",\n  \"currency\": \"USD\",\n  \"allowNegative\": true\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set('runId', pm.variables.replaceIn('{{$guid}}'));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('201 Created', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('systemId', pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Create Alice (USER)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/accounts",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "accounts"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Alice\",\n  \"type\": \"USER\",\n  \"currency\": \"USD\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('201 Created', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('aliceId', pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Create Bob (USER)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/accounts",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "accounts"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Bob\",\n  \"type\": \"USER\",\n  \"currency\": \"USD\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('201 Created', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('bobId', pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Top up Alice 10000 (100.00) from SYSTEM",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "topup-{{runId}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/transfers",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "transfers"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fromAccountId\": \"{{systemId}}\",\n  \"toAccountId\": \"{{aliceId}}\",\n  \"amount\": 10000,\n  \"currency\": \"USD\",\n  \"description\": \"Top-up\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('201 Created', () => pm.response.to.have.status(201));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. REPLAY same key + same body -> 200, no second top-up",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "topup-{{runId}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/transfers",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "transfers"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fromAccountId\": \"{{systemId}}\",\n  \"toAccountId\": \"{{aliceId}}\",\n  \"amount\": 10000,\n  \"currency\": \"USD\",\n  \"description\": \"Top-up\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200 OK (replay)', () => pm.response.to.have.status(200));",
+              "pm.test('Replay header present', () => pm.expect(pm.response.headers.get('Idempotent-Replayed')).to.eql('true'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Same key, DIFFERENT amount -> 422",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "topup-{{runId}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/transfers",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "transfers"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fromAccountId\": \"{{systemId}}\",\n  \"toAccountId\": \"{{aliceId}}\",\n  \"amount\": 99999,\n  \"currency\": \"USD\",\n  \"description\": \"Top-up\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('422 key reuse rejected', () => pm.response.to.have.status(422));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Transfer Alice -> Bob 2500",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "transfer-{{runId}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/transfers",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "transfers"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fromAccountId\": \"{{aliceId}}\",\n  \"toAccountId\": \"{{bobId}}\",\n  \"amount\": 2500,\n  \"currency\": \"USD\",\n  \"description\": \"Lunch\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('201 Created', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('txId', pm.response.json().transactionId);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Overdraft Alice -> Bob 999999 -> 422",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "overdraft-{{runId}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/transfers",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "transfers"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fromAccountId\": \"{{aliceId}}\",\n  \"toAccountId\": \"{{bobId}}\",\n  \"amount\": 999999,\n  \"currency\": \"USD\",\n  \"description\": \"Too much\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('422 insufficient funds', () => pm.response.to.have.status(422));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. Missing Idempotency-Key -> 400",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/transfers",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "transfers"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fromAccountId\": \"{{aliceId}}\",\n  \"toAccountId\": \"{{bobId}}\",\n  \"amount\": 100,\n  \"currency\": \"USD\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('400 missing header', () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. Alice balance should be 7500",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/accounts/{{aliceId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "accounts",
+            "{{aliceId}}"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('balance is 7500', () => pm.expect(pm.response.json().balance).to.eql(7500));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11. Bob balance should be 2500",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/accounts/{{bobId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "accounts",
+            "{{bobId}}"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('balance is 2500', () => pm.expect(pm.response.json().balance).to.eql(2500));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "12. View transaction (one DEBIT + one CREDIT)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/transactions/{{txId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "transactions",
+            "{{txId}}"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('two entries', () => pm.expect(pm.response.json().entries.length).to.eql(2));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
