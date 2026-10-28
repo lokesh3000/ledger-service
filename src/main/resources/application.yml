@@ -14,3 +14,8 @@ spring:
 
 server:
   port: ${PORT:8080}
+
+ledger:
+  reconciliation:
+    initial-delay-ms: 30000
+    interval-ms: 300000   # run the consistency check every 5 minutes

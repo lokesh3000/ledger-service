@@ -14,9 +14,9 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * An account holds a cached balance in minor units (cents).
- * The ledger entries are the source of truth; the balance column is kept in
- * step with them under a row lock and verified by reconciliation (Phase 2).
+ * An account holds a cached balance in minor units (cents) plus an amount "held" by active holds.
+ * available = balance - held. Ledger entries are the source of truth; the reconciliation job
+ * verifies balance and held against them.
  */
 @Entity
 @Table(name = "accounts")
@@ -39,6 +39,9 @@ public class Account {
     @Column(nullable = false)
     private long balance;
 
+    @Column(nullable = false)
+    private long held;
+
     @Column(name = "allow_negative", nullable = false)
     private boolean allowNegative;
 
@@ -55,14 +58,19 @@ public class Account {
         this.currency = currency;
         this.allowNegative = allowNegative;
         this.balance = 0;
+        this.held = 0;
         this.createdAt = Instant.now();
     }
 
-    /** Money leaves this account. */
+    public long available() {
+        return balance - held;
+    }
+
+    /** Money leaves this account. Held money is not spendable. */
     public void debit(long amount) {
         requirePositive(amount);
-        if (!allowNegative && balance < amount) {
-            throw new InsufficientFundsException(id, balance, amount);
+        if (!allowNegative && available() < amount) {
+            throw new InsufficientFundsException(id, available(), amount);
         }
         balance -= amount;
     }
@@ -71,6 +79,24 @@ public class Account {
     public void credit(long amount) {
         requirePositive(amount);
         balance += amount;
+    }
+
+    /** Reserve money without moving it. */
+    public void placeHold(long amount) {
+        requirePositive(amount);
+        if (!allowNegative && available() < amount) {
+            throw new InsufficientFundsException(id, available(), amount);
+        }
+        held += amount;
+    }
+
+    /** Un-reserve money (hold released, or about to be captured). */
+    public void releaseHold(long amount) {
+        requirePositive(amount);
+        if (amount > held) {
+            throw new IllegalStateException("Cannot release " + amount + " when only " + held + " is held");
+        }
+        held -= amount;
     }
 
     private static void requirePositive(long amount) {
@@ -84,6 +110,7 @@ public class Account {
     public AccountType getType() { return type; }
     public String getCurrency() { return currency; }
     public long getBalance() { return balance; }
+    public long getHeld() { return held; }
     public boolean isAllowNegative() { return allowNegative; }
     public Instant getCreatedAt() { return createdAt; }
 }

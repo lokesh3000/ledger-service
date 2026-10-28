@@ -1,5 +1,6 @@
 package com.ledger.transaction;
 
+import com.ledger.idempotency.IdempotentResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,24 +19,25 @@ import java.util.UUID;
 public class TransferController {
 
     private final TransferService transferService;
+    private final ReversalService reversalService;
 
-    public TransferController(TransferService transferService) {
+    public TransferController(TransferService transferService, ReversalService reversalService) {
         this.transferService = transferService;
+        this.reversalService = reversalService;
     }
 
     @PostMapping("/transfers")
     public ResponseEntity<TransferResponse> transfer(
             @RequestHeader("Idempotency-Key") String idempotencyKey,
             @Valid @RequestBody TransferRequest request) {
+        return IdempotentResponse.of(transferService.transfer(idempotencyKey, request), HttpStatus.CREATED);
+    }
 
-        TransferResult result = transferService.transfer(idempotencyKey, request);
-
-        if (result.replayed()) {
-            return ResponseEntity.ok()
-                    .header("Idempotent-Replayed", "true")
-                    .body(result.response());
-        }
-        return ResponseEntity.status(HttpStatus.CREATED).body(result.response());
+    @PostMapping("/transactions/{id}/reverse")
+    public ResponseEntity<TransferResponse> reverse(
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @PathVariable UUID id) {
+        return IdempotentResponse.of(reversalService.reverse(idempotencyKey, id), HttpStatus.CREATED);
     }
 
     @GetMapping("/transactions/{id}")

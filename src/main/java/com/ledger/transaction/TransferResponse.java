@@ -7,6 +7,7 @@ import java.util.UUID;
 public record TransferResponse(
         UUID transactionId,
         String description,
+        UUID reversalOf,
         Instant createdAt,
         List<EntryResponse> entries
 ) {
@@ -17,6 +18,6 @@ public record TransferResponse(
         List<EntryResponse> entries = tx.getEntries().stream()
                 .map(e -> new EntryResponse(e.getAccountId(), e.getDirection(), e.getAmount()))
                 .toList();
-        return new TransferResponse(tx.getId(), tx.getDescription(), tx.getCreatedAt(), entries);
+        return new TransferResponse(tx.getId(), tx.getDescription(), tx.getReversalOf(), tx.getCreatedAt(), entries);
     }
 }

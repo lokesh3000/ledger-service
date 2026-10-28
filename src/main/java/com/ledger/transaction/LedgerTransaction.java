@@ -27,6 +27,10 @@ public class LedgerTransaction {
     @Column(length = 255)
     private String description;
 
+    /** Set when this transaction undoes another one. Never modifies the original. */
+    @Column(name = "reversal_of")
+    private UUID reversalOf;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -40,7 +44,12 @@ public class LedgerTransaction {
     }
 
     public LedgerTransaction(String description) {
+        this(description, null);
+    }
+
+    public LedgerTransaction(String description, UUID reversalOf) {
         this.description = description;
+        this.reversalOf = reversalOf;
         this.createdAt = Instant.now();
     }
 
@@ -67,6 +76,7 @@ public class LedgerTransaction {
 
     public UUID getId() { return id; }
     public String getDescription() { return description; }
+    public UUID getReversalOf() { return reversalOf; }
     public Instant getCreatedAt() { return createdAt; }
     public List<LedgerEntry> getEntries() { return entries; }
 }

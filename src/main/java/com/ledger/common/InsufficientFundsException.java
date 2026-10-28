@@ -3,8 +3,8 @@ package com.ledger.common;
 import java.util.UUID;
 
 public class InsufficientFundsException extends BusinessRuleException {
-    public InsufficientFundsException(UUID accountId, long balance, long requested) {
+    public InsufficientFundsException(UUID accountId, long available, long requested) {
         super("Insufficient funds in account " + accountId
-                + ": balance=" + balance + ", requested=" + requested);
+                + ": available=" + available + ", requested=" + requested);
     }
 }
